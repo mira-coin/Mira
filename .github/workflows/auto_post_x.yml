@@ -1,0 +1,40 @@
+name: X 自動投稿
+
+on:
+  schedule:
+    # 月・水・金・日 の 日本時間 21:00（UTC 12:00）に投稿
+    - cron: "0 12 * * 1,3,5,0"
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # queue.json の更新をコミットするため
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python セットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 依存パッケージインストール
+        run: pip install tweepy
+
+      - name: X に投稿
+        env:
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+        run: python scripts/post_to_x.py
+
+      - name: queue.json の変更をコミット
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sns/queue.json
+          git diff --staged --quiet || git commit -m "chore: X投稿ステータス更新"
+          git push
